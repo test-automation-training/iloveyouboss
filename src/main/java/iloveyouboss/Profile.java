@@ -8,9 +8,12 @@
  ***/
 package iloveyouboss;
 
-import java.util.*;
-import java.util.function.*;
-import java.util.stream.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class Profile {
 
@@ -33,28 +36,53 @@ public class Profile {
     }
 
     public boolean matches(Criteria criteria) {
-        score = 0;
+        calculateScore(criteria);
 
-        boolean kill = false;
+        if (anyMustMatchAnswerFailed(criteria)) {
+            return false;
+        }
+
+        return isAnyAnswerMatches(criteria);
+    }
+
+    private boolean isAnyAnswerMatches(Criteria criteria) {
         boolean anyMatches = false;
         for (Criterion criterion : criteria) {
-            Answer answer = answers.get(
-                    criterion.getAnswer().getQuestionText());
-            boolean match =
-                    criterion.getWeight() == Weight.DontCare ||
-                            answer.match(criterion.getAnswer());
-            if (!match && criterion.getWeight() == Weight.MustMatch) {
-                kill = true;
-            }
+            boolean match = isAnswerMatch(criterion);
+            anyMatches |= match;
+        }
+        return anyMatches;
+    }
+
+    private void calculateScore(Criteria criteria) {
+        resetScore();
+
+        for (Criterion criterion : criteria) {
+            boolean match = isAnswerMatch(criterion);
             if (match) {
                 score += criterion.getWeight().getValue();
             }
-            anyMatches |= match;
-            // ...
         }
-        if (kill)
-            return false;
-        return anyMatches;
+    }
+
+    private boolean anyMustMatchAnswerFailed(Criteria criteria) {
+        for (Criterion criterion : criteria) {
+            if (!isAnswerMatch(criterion) && criterion.getWeight() == Weight.MustMatch) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isAnswerMatch(Criterion criterion) {
+        Answer answer = answers.get(
+                criterion.getAnswer().getQuestionText());
+        return criterion.getWeight() == Weight.DontCare ||
+                answer.match(criterion.getAnswer());
+    }
+
+    private void resetScore() {
+        score = 0;
     }
 
     public int score() {
